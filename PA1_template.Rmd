@@ -1,25 +1,151 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: 'Course Project 1: Reproducible Research'
+author: "Maura Bardos"
+date: "October 12, 2018"
+output: html_document
 ---
 
+```{r setup, echo =TRUE}
+library(rmarkdown)
+library(dplyr)
+library(chron)
+```
 
-## Loading and preprocessing the data
+# Introduction
+
+This report describes data analysis for data from a personal activity monitoring device. The data (Activity.csv)
+was downloaded from the course website. This device collects data at 5 minute intervals through out the day. 
+The data consists of two months of data from an anonymous individual collected during the months
+of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The dataset has three variables and 17,568 observations. variables include steps, date, and interval. 
+Steps are the number of steps taking in a 5-minute interval (missing values are coded as NA). Time interval refers
+to the 5-minute interval in which measurement was taken
+
+
+#Loading and preprocessing the data
+
+Data for the analysis was loaded into R. Data preprocessing was performed to ensure that the date variable was 
+formatted correclty. 
+
+```{r, echo =TRUE}
+activity <- read.csv("./activity.csv", stringsAsFactors=FALSE)
+activity$date <- as.Date(activity$date)
+
+```
+
+#Descriptive Analysis
+
+##Total, Average, and Median Steps per Day
+First, descriptive statistics on steps per day were computed and the total, average, and median steps per day
+can be seen in the table below. 
+
+```{r, echo =TRUE}
+steps_by_day <- activity %>%
+  group_by(date) %>%
+  summarize(sumsteps = sum(steps, na.rm = TRUE), meansteps = mean(steps, na.rm = TRUE),
+            mediansteps = median(steps, na.rm = TRUE))
+```
+```{r comment='', echo=FALSE, results='asis'}
+ knitr::kable(steps_by_day[1:61,1:4], caption = "Summary Statistics of Steps per Day", floating.environment="sidewaystable")
+```
+
+The distribution of steps per day was computed and is shown in a histogram
+
+```{r steps_by_day, echo=TRUE}
+hist(steps_by_day$sumsteps, main = "Histogram of Total Steps per Day", xlab = "Total Steps per Day")
+```
+
+##Average Daily Activity Patterns
+
+Next, time series plots were explored to examine the average number steps by 5-minute interval. 
+
+```{r, echo = TRUE}
+steps_by_interval <- activity %>%
+  group_by(interval) %>%
+  summarize(meansteps = mean(steps, na.rm = TRUE)) 
+
+
+plot( steps_by_interval$interval, steps_by_interval$meansteps, type = "l", xlab = "5-minute interval", 
+      ylab = "Average Number of Steps Taken (averaged across all days)", main = "Average number of Steps Taken During Day")
+
+max_steps_interval <-  steps_by_interval %>%
+  arrange(desc(meansteps))
+
+max_steps <- max_steps_interval$interval[1]
+```
+
+The the maximum number of steps on average occurs at the 5-minute interval of `r max_steps`. 
+
+##Imputing Missing Values
+
+Next, we look at missing values to determine their potential impact on our analysis. 
+
+```{r, echo = TRUE}
+missing_rows <- sum(is.na(activity$steps))
+
+activity_impute <- activity
+activity_impute$steps[is.na(activity$steps)] <- mean(activity_impute$steps, na.rm = TRUE)
+
+```
+
+The total number of rows with missing values is `r missing_rows`. Missing values only occur in the variable steps. 
+
+To impute missing values, we use simple mean imputation and and create a new dataset called 
+activity_imputed. The histogram for activity_imputed shows that a larger proportion of the data is now centered 
+around the mean. This is because we imputed mean values for any NAs in the orignal dataset. 
+
+```{r, echo = TRUE}
+steps_by_day_i <- activity_impute %>%
+  group_by(date) %>%
+  summarize(sumsteps = sum(steps, na.rm = TRUE), meansteps = mean(steps, na.rm = TRUE),
+            mediansteps = median(steps, na.rm = TRUE))
+```
+```{r comment='', echo=FALSE, results='asis'}
+ knitr::kable(steps_by_day_i[1:61,1:4], caption = "Summary Statistics of Steps per Day for Imputed Data", floating.environment="sidewaystable")
+```
+
+
+```{r steps_by_day_i, echo=TRUE}
+hist(steps_by_day_i$sumsteps, main = "Histogram of Total Steps per Day, Imputed", xlab = "Total Steps per Day")
+```
+
+## Analysis of Weekdays versus Weekends
+
+To analyze differences in steps between weekdays and weekends, we create a variable to classify the date
+by weekday or weekend. The time series plot of the 5-minute interval and average number of steps taken, averaged 
+across all weekdays or weekends is plotted. 
+
+The plot indicates that the maximum number of average steps taken is greater on weekdays is greater than weekends. However, there is variability in average steps throught the day for a weekend day than weekday.
+
+```{r, echo = TRUE}
+
+activity_impute$weekend = chron::is.weekend(activity_impute$date)
+activity_impute_weekend <- activity_impute[which(activity_impute$weekend == "TRUE"),]
+activity_impute_weekday <- activity_impute[which(activity_impute$weekend == "FALSE"),]
+
+
+steps_by_interval_weekend <- activity_impute_weekend%>%
+  group_by(interval) %>%
+  summarize(meansteps = mean(steps, na.rm = TRUE)) 
+
+steps_by_interval_weekday <- activity_impute_weekday%>%
+  group_by(interval) %>%
+  summarize(meansteps = mean(steps, na.rm = TRUE)) 
+
+par(mfrow=c(2,1))
+
+plot(steps_by_interval_weekend$interval, steps_by_interval_weekend$meansteps, type = "l", xlab = "5-minute interval", 
+      ylab = "Average Number of Steps", main = "Average number of Steps Taken During Weekend")
+
+plot( steps_by_interval_weekday$interval, steps_by_interval_weekday$meansteps, type = "l", xlab = "5-minute interval", 
+      ylab = "Average Number of Steps", main = "Average number of Steps Taken Weekday")
+
+```
 
 
 
-## What is mean total number of steps taken per day?
 
 
 
-## What is the average daily activity pattern?
 
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
